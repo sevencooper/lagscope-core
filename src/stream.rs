@@ -67,7 +67,7 @@ pub struct Meta {
     pub rate: f64,
 }
 
-#[derive(Debug, Serialize, Clone, Copy, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum Dir {
     Down,
@@ -76,7 +76,7 @@ pub enum Dir {
 }
 
 /// Why a stream paused.
-#[derive(Debug, Serialize, Clone, Copy, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum Cause {
     /// The network held or lost the packets.
@@ -91,7 +91,7 @@ pub enum Cause {
     Load,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Stall {
     pub dir: Dir,
@@ -103,7 +103,7 @@ pub struct Stall {
     pub cause: Cause,
 }
 
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DirStats {
     /// Network stalls of 80 ms+.
@@ -123,7 +123,7 @@ pub struct DirStats {
     pub loss_pct: f64,
 }
 
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RttStats {
     pub count: usize,
@@ -139,7 +139,7 @@ pub struct RttStats {
     pub jitter_ms: f64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Timer {
     /// Which pauses keep the beat.
@@ -155,7 +155,7 @@ pub struct Timer {
     pub anchor_ms: f64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SecondTimer {
     /// Pauses starting at the same point within a second, of `total`.
@@ -163,7 +163,7 @@ pub struct SecondTimer {
     pub total: usize,
 }
 
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceStats {
     /// Pauses this device or browser caused, both directions.
@@ -174,7 +174,7 @@ pub struct DeviceStats {
     pub hidden_ms: f64,
 }
 
-#[derive(Debug, Serialize, Clone, Copy, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum Status {
     Ok,
@@ -182,15 +182,15 @@ pub enum Status {
     Na,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Line {
     /// timer, download, upload, loss, rtt, device
-    pub area: &'static str,
+    pub area: String,
     pub status: Status,
 }
 
 /// The line's behaviour in one phase of the test.
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct PhaseStats {
     pub ms: f64,
@@ -203,7 +203,7 @@ pub struct PhaseStats {
     pub loss_pct: f64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LoadStats {
     pub idle: PhaseStats,
@@ -214,14 +214,14 @@ pub struct LoadStats {
     pub up_extra_ms: Option<f64>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Analysis {
     /// Length of the test (ms) and the part that was judged (tab in front).
     pub duration_ms: f64,
     pub judged_ms: f64,
     /// One of: steady, timer, freezes, upload, download, loss, load, ping, device, not_enough.
-    pub verdict: &'static str,
+    pub verdict: String,
     pub score: Vec<Line>,
     pub down: DirStats,
     pub up: DirStats,
@@ -453,15 +453,15 @@ pub fn analyze(r: &Recording) -> Analysis {
     let load_warn =
         load.as_ref().is_some_and(|l| l.down_extra_ms.unwrap_or(0.0).max(l.up_extra_ms.unwrap_or(0.0)) > LOAD_MS);
     let mut score = vec![
-        Line { area: "timer", status: st(timer_warn) },
-        Line { area: "download", status: st(down_warn) },
-        Line { area: "upload", status: st(up_warn) },
-        Line { area: "loss", status: st(loss_warn) },
-        Line { area: "rtt", status: st(rtt_warn) },
-        Line { area: "device", status: st(device_warn) },
+        Line { area: "timer".into(), status: st(timer_warn) },
+        Line { area: "download".into(), status: st(down_warn) },
+        Line { area: "upload".into(), status: st(up_warn) },
+        Line { area: "loss".into(), status: st(loss_warn) },
+        Line { area: "rtt".into(), status: st(rtt_warn) },
+        Line { area: "device".into(), status: st(device_warn) },
     ];
     if load.is_some() {
-        score.insert(5, Line { area: "load", status: st(load_warn) });
+        score.insert(5, Line { area: "load".into(), status: st(load_warn) });
     }
     let verdict = if !enough {
         "not_enough"
@@ -491,7 +491,7 @@ pub fn analyze(r: &Recording) -> Analysis {
     Analysis {
         duration_ms: end,
         judged_ms,
-        verdict,
+        verdict: verdict.into(),
         score,
         down: down_stats,
         up: up_stats,

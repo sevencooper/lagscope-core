@@ -258,3 +258,13 @@ fn missing_inputs_are_named() {
     assert_eq!(q[0].note, Some(Note::MissingLoad));
     assert_eq!(q[2].note, Some(Note::MissingSpeed));
 }
+
+#[test]
+fn a_saved_result_reads_back_the_same() {
+    // Products keep only the analysis (history, share links) and grade it again later.
+    let a = analyze(&steady_with_load().record());
+    let back: Analysis = serde_json::from_str(&serde_json::to_string(&a).unwrap()).unwrap();
+    let speed = Speed { down: Some(50e6), ..Default::default() };
+    assert_eq!(format!("{:?}", quality(&a, Some(&speed))), format!("{:?}", quality(&back, Some(&speed))));
+    assert_eq!(back.verdict, a.verdict);
+}
