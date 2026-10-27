@@ -6,7 +6,7 @@ under "Unreleased".
 
 ## Unreleased
 
-### 0.1.0 (planned): the first version
+## 0.1.0 (2026-10-27): the first version
 
 - The two-way stream test's analysis (`stream::analyze`): stalls per direction (held or lost,
   sender late, device, hidden tab, under load), loss, round trip and jitter, timers, the
