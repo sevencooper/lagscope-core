@@ -1,0 +1,10 @@
+target/
+*.wasm
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+# Recordings of real lines stay outside the repository (personal data).
+recordings/
+*.pcap
+*.pcapng
