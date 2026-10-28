@@ -90,14 +90,31 @@ fn grade(use_: Use, total: i32) -> Grade {
     [Grade::Bad, Grade::Poor, Grade::Average, Grade::Good, Grade::Great][t.iter().filter(|&&x| total >= x).count()]
 }
 
+/// What the grades are made of, as plain numbers, for a product that measures them its own way
+/// (the LagScope app). `quality` fills it from a stream test.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Inputs {
+    /// Idle round trip, median (ms).
+    pub latency_ms: f64,
+    /// Jitter (ms), as `stream::jitter` computes it.
+    pub jitter_ms: f64,
+    /// Packet loss, the worse direction (%).
+    pub loss_pct: f64,
+    /// How much the round trip rises while the line is busy (ms); None = not measured.
+    pub load_increase_ms: Option<f64>,
+    /// Download speed (bits per second); None = not measured.
+    pub download_bps: Option<f64>,
+    /// Freezes were found (a timer, a 1-second timer, or felt freezes in either direction):
+    /// gaming is capped at Average.
+    pub froze: bool,
+}
+
 /// The three grades for a stream test, with the speed test's results if it ran.
 pub fn quality(a: &Analysis, speed: Option<&Speed>) -> Vec<Quality> {
     if a.verdict == "not_enough" {
         return Vec::new();
     }
-    let latency = latency_points(a.rtt.median_ms);
-    let loss = loss_points(a.down.loss_pct.max(a.up.loss_pct) / 100.0);
-    let jitter = jitter_points(a.rtt.jitter_ms);
     // Increase under load: from the under-load phases if they ran, else the speed test's.
     let increase = match (&a.load, speed) {
         (Some(l), _) if l.down_extra_ms.is_some() || l.up_extra_ms.is_some() => {
@@ -108,12 +125,27 @@ pub fn quality(a: &Analysis, speed: Option<&Speed>) -> Vec<Quality> {
         }
         _ => None,
     };
-    let load = increase.map(latency_points);
-    let missing_load = load.is_none().then_some(Note::MissingLoad);
-
     let froze = a.timer.is_some()
         || a.second_timer.is_some()
         || a.score.iter().any(|l| (l.area == "download" || l.area == "upload") && l.status == Status::Warn);
+    grade_inputs(&Inputs {
+        latency_ms: a.rtt.median_ms,
+        jitter_ms: a.rtt.jitter_ms,
+        loss_pct: a.down.loss_pct.max(a.up.loss_pct),
+        load_increase_ms: increase,
+        download_bps: speed.and_then(|s| s.down),
+        froze,
+    })
+}
+
+/// The three grades from plain numbers (`Inputs`).
+pub fn grade_inputs(i: &Inputs) -> Vec<Quality> {
+    let latency = latency_points(i.latency_ms);
+    let loss = loss_points(i.loss_pct / 100.0);
+    let jitter = jitter_points(i.jitter_ms);
+    let load = i.load_increase_ms.map(latency_points);
+    let missing_load = load.is_none().then_some(Note::MissingLoad);
+    let froze = i.froze;
     let gaming = match load.map(|l| grade(Use::Gaming, latency + loss + l)) {
         Some(g) if froze && g > Grade::Average => {
             Quality { use_: Use::Gaming, grade: Some(Grade::Average), note: Some(Note::FreezeCap) }
@@ -130,7 +162,7 @@ pub fn quality(a: &Analysis, speed: Option<&Speed>) -> Vec<Quality> {
         grade: load.map(|l| grade(Use::VideoCalls, latency + jitter + loss + l)),
         note: missing_load,
     };
-    let down = speed.and_then(|s| s.down);
+    let down = i.download_bps;
     let streaming = Quality {
         use_: Use::Streaming,
         grade: load.zip(down).map(|(l, d)| grade(Use::Streaming, latency + loss + download_points(d) + l)),
@@ -152,6 +184,26 @@ mod tests {
         assert_eq!(loss_points(0.6), -20);
         assert_eq!(download_points(5e8), 30);
         assert_eq!(jitter_points(15.0), 5);
+    }
+
+    #[test]
+    fn grades_from_plain_numbers() {
+        let i = Inputs {
+            latency_ms: 8.0,
+            jitter_ms: 2.0,
+            loss_pct: 0.0,
+            load_increase_ms: Some(5.0),
+            download_bps: Some(3e8),
+            froze: false,
+        };
+        let q = grade_inputs(&i);
+        // 20 + 10 + 20 = 50: Great for gaming; calls add jitter (60), streaming download (80).
+        assert!(q.iter().all(|q| q.grade == Some(Grade::Great) && q.note.is_none()));
+        let q = grade_inputs(&Inputs { froze: true, ..i.clone() });
+        assert_eq!((q[0].grade, q[0].note), (Some(Grade::Average), Some(Note::FreezeCap)));
+        let q = grade_inputs(&Inputs { load_increase_ms: None, download_bps: None, ..i });
+        assert_eq!((q[0].grade, q[0].note), (None, Some(Note::MissingLoad)));
+        assert_eq!((q[2].grade, q[2].note), (None, Some(Note::MissingSpeed)));
     }
 
     #[test]

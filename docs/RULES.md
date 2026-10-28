@@ -150,3 +150,7 @@ Gaming = latency + loss + increase (Poor / Average / Good / Great from 5 / 15 / 
 video calls add jitter (5 / 15 / 25 / 40); streaming adds download (15 / 20 / 40 / 60). Below
 the first threshold: Bad. **Freeze cap:** a timer, a 1-second timer, or felt freezes in either
 direction keep gaming at Average at best (Cloudflare's score does not see freezes).
+
+A product that measures in its own way (the LagScope app) passes the same numbers as
+`quality::Inputs` to `quality::grade_inputs`; jitter comes from `stream::jitter` on the round
+trips in the order they were measured.
