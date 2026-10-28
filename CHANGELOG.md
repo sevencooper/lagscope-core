@@ -6,7 +6,7 @@ under "Unreleased".
 
 ## Unreleased
 
-## 0.2.0: grades and jitter from plain numbers
+## 0.2.0 (2026-10-27): grades and jitter from plain numbers
 
 No result changes (the fixtures are unchanged). New API, for a product that measures in its
 own way rather than with the stream test:
