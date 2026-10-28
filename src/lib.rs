@@ -3,6 +3,7 @@
 //! the two products use it. No platform code: builds for Windows, Linux and WebAssembly.
 
 pub mod beat;
+pub mod design;
 pub mod quality;
 pub mod stalls;
 pub mod stream;

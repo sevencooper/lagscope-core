@@ -6,6 +6,22 @@ under "Unreleased".
 
 ## Unreleased
 
+## 0.2.0: grades and jitter from plain numbers
+
+No result changes (the fixtures are unchanged). New API, for a product that measures in its
+own way rather than with the stream test:
+
+- `quality::Inputs` and `quality::grade_inputs`: "Good for" from plain numbers (idle round
+  trip, jitter, loss, increase under load, download speed, whether it froze). `quality` now
+  fills `Inputs` from a stream test and calls it.
+- `stream::jitter`: jitter as Cloudflare defines it (the average change between consecutive
+  round trips), the same calculation the stream test uses.
+- `design::TOKENS_JSON`: `design/tokens.json`, readable from a build script that depends on
+  this crate.
+
+To adopt: **Pulse**: nothing required (same functions, same results). **LagScope app**: grade
+its recordings with `grade_inputs` and `jitter`, and read the tokens from `TOKENS_JSON`.
+
 ## 0.1.0 (2026-10-27): the first version
 
 - The two-way stream test's analysis (`stream::analyze`): stalls per direction (held or lost,

@@ -578,11 +578,7 @@ fn rtt_stats(echoes: &[(f64, f64)], freezes: &[(f64, f64)]) -> RttStats {
             last = t;
         }
     }
-    let jitter_ms = if echoes.len() > 1 {
-        echoes.windows(2).map(|w| (w[1].1 - w[0].1).abs()).sum::<f64>() / (echoes.len() - 1) as f64
-    } else {
-        0.0
-    };
+    let jitter_ms = jitter(&echoes.iter().map(|e| e.1).collect::<Vec<_>>());
     RttStats {
         count: all.len(),
         median_ms: median,
@@ -592,6 +588,15 @@ fn rtt_stats(echoes: &[(f64, f64)], freezes: &[(f64, f64)]) -> RttStats {
         spikes,
         jitter_ms,
     }
+}
+
+/// Jitter as Cloudflare defines it: the average change between consecutive round trips (ms),
+/// in the order they were measured. 0 with fewer than two.
+pub fn jitter(rtts_ms: &[f64]) -> f64 {
+    if rtts_ms.len() < 2 {
+        return 0.0;
+    }
+    rtts_ms.windows(2).map(|w| (w[1] - w[0]).abs()).sum::<f64>() / (rtts_ms.len() - 1) as f64
 }
 
 /// Worst round trip per bucket, about 720 buckets over the test (enough for a wide chart).
